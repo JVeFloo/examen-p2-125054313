@@ -44,7 +44,11 @@ RUN set -eux; \
     curl -fsSL -o hadoop.tar.gz "$cdn" || curl -fsSL -o hadoop.tar.gz "$arc"; \
     mkdir -p "${HADOOP_HOME}"; \
     tar -xzf hadoop.tar.gz -C "${HADOOP_HOME}" --strip-components=1; \
-    rm -f hadoop.tar.gz
+    rm -f hadoop.tar.gz; \
+    rm -rf "${HADOOP_HOME}/share/doc"
+# El tar se borra en el MISMO RUN que la descarga: si se borrara en una
+# instruccion aparte seguiria ocupando espacio en la capa anterior.
+# share/doc es solo la documentacion HTML y no hace falta en el contenedor.
 
 # hadoop-env.sh tambien necesita JAVA_HOME: los scripts de Hadoop se lanzan
 # en sesiones no interactivas (por ejemplo via ssh) donde el ENV no viaja.
