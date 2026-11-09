@@ -103,9 +103,12 @@ El script borra la salida anterior, copia `mapper.py` y `reducer.py` a un direct
 hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
   -input  /data/input/ventas_125054313.csv \
   -output /data/output/resultado \
-  -mapper mapper.py -reducer reducer.py \
+  -mapper "python3 mapper.py" -reducer "python3 reducer.py" \
   -file mapper.py -file reducer.py
 ```
+
+Los scripts se invocan como `python3 mapper.py` en lugar de `mapper.py` a secas para que el job
+no dependa de que el bit de ejecución sobreviva al paso por la caché distribuida.
 
 El resultado queda en `salidas/resultado/part-00000` del host, con una línea por tienda:
 

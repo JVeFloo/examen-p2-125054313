@@ -22,12 +22,14 @@ cp /opt/jobs/mapper.py /opt/jobs/reducer.py "$WORK/"
 chmod +x "$WORK"/mapper.py "$WORK"/reducer.py
 cd "$WORK"
 
+# Se invoca "python3 mapper.py" en vez de "mapper.py" a secas: asi el job no
+# depende de que el bit de ejecucion sobreviva a la cache distribuida.
 echo "=== Lanzando MapReduce sobre $INPUT ==="
 time hadoop jar "$HADOOP_HOME"/share/hadoop/tools/lib/hadoop-streaming-*.jar \
     -input  "$INPUT" \
     -output "$OUTDIR" \
-    -mapper mapper.py \
-    -reducer reducer.py \
+    -mapper "python3 mapper.py" \
+    -reducer "python3 reducer.py" \
     -file mapper.py \
     -file reducer.py
 
