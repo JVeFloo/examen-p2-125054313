@@ -1,0 +1,22 @@
+# ---- El dataset NUNCA se sube al repositorio ----
+*.csv
+data/*
+!data/.gitkeep
+
+# ---- Credenciales ----
+.env
+
+# ---- Salida del job de MapReduce ----
+salidas/*
+!salidas/.gitkeep
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- Editores / SO ----
+.vscode/
+.idea/
+.DS_Store

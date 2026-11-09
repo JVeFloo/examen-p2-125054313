@@ -1,0 +1,73 @@
+# ============================================================
+#  Pipeline DataMart:  hadoop  ->  db  ->  api
+#  Levanta todo con:   docker compose up --build
+# ============================================================
+name: examen-p2
+
+services:
+
+  # ---------- 1. Procesamiento: Hadoop en modo standalone ----------
+  hadoop:
+    build:
+      context: ./hadoop
+    image: datamart/hadoop:3.5.0
+    container_name: datamart_hadoop
+    hostname: hadoop
+    environment:
+      # Solo lo que este servicio necesita: nada de credenciales de la BD.
+      MATRICULA: ${MATRICULA}
+    volumes:
+      - ./data:/data/input:ro        # dataset montado de SOLO LECTURA
+      - ./mapreduce:/opt/jobs:ro     # mapper.py / reducer.py / secuencial.py
+      - ./scripts:/opt/scripts:ro    # run_job.sh y utilidades
+      - ./salidas:/data/output       # salida del job, visible desde el host
+      - ssh_keys:/ssh-keys           # par de llaves compartido con api
+    networks:
+      - datamart_net
+    restart: unless-stopped
+
+  # ---------- 2. Almacenamiento: PostgreSQL ----------
+  db:
+    image: postgres:16-alpine
+    container_name: datamart_db
+    env_file: .env                   # POSTGRES_USER / PASSWORD / DB
+    volumes:
+      - db_data:/var/lib/postgresql/data                              # volumen NOMBRADO = persistencia
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - datamart_net
+    restart: unless-stopped
+
+  # ---------- 3. Exposicion: API REST (FastAPI) ----------
+  api:
+    build:
+      context: ./api
+    container_name: datamart_api
+    env_file: .env
+    ports:
+      - "${API_PORT:-8000}:8000"     # cambiar API_PORT en .env para mover el puerto
+    depends_on:
+      db:
+        condition: service_healthy   # no arranca hasta que Postgres responde
+      hadoop:
+        condition: service_started   # para que exista ya el par de llaves
+    volumes:
+      - ./salidas:/data/output:ro    # lee la salida del job
+      - ./scripts:/app/scripts:ro    # cargar_resultados.py
+      - ssh_keys:/ssh-keys
+    networks:
+      - datamart_net
+    restart: unless-stopped
+
+volumes:
+  db_data:      # persiste los datos de PostgreSQL entre 'down' y 'up'
+  ssh_keys:     # par de llaves generado una sola vez
+
+networks:
+  datamart_net:
+    driver: bridge
