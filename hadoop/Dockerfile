@@ -37,17 +37,30 @@ RUN test -x "${JAVA_HOME}/bin/java" \
     || { echo "ERROR: JAVA_HOME mal definido. Contenido de /usr/lib/jvm:"; ls -1 /usr/lib/jvm; exit 1; }
 
 # ---------- 3. Descarga e instalacion de Hadoop ----------
-RUN set -eux; \
-    cd /tmp; \
-    cdn="https://dlcdn.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz"; \
-    arc="https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz"; \
-    curl -fsSL -o hadoop.tar.gz "$cdn" || curl -fsSL -o hadoop.tar.gz "$arc"; \
+# La carpeta vendor/ se monta SOLO mientras dura este paso: al ser un
+# --mount y no un COPY, el tar de 1 GB no deja ninguna capa en la imagen.
+# Si el tar ya esta descargado ahi se usa; si no, se baja de Apache. Asi
+# una reconstruccion no vuelve a bajar 1 GB con una conexion lenta.
+RUN --mount=type=bind,source=vendor,target=/vendor \
+    set -eux; \
+    local_tar="/vendor/hadoop-${HADOOP_VERSION}.tar.gz"; \
+    if [ -f "$local_tar" ]; then \
+        echo "Usando el tar ya descargado en vendor/"; \
+        usar="$local_tar"; \
+    else \
+        echo "No hay tar en vendor/: descargando desde Apache"; \
+        cdn="https://dlcdn.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz"; \
+        arc="https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz"; \
+        curl -fL --retry 10 --retry-delay 15 --retry-all-errors -o /tmp/hadoop.tar.gz "$cdn" \
+          || curl -fL --retry 10 --retry-delay 15 --retry-all-errors -o /tmp/hadoop.tar.gz "$arc"; \
+        usar=/tmp/hadoop.tar.gz; \
+    fi; \
     mkdir -p "${HADOOP_HOME}"; \
-    tar -xzf hadoop.tar.gz -C "${HADOOP_HOME}" --strip-components=1; \
-    rm -f hadoop.tar.gz; \
+    tar -xzf "$usar" -C "${HADOOP_HOME}" --strip-components=1; \
+    rm -f /tmp/hadoop.tar.gz; \
     rm -rf "${HADOOP_HOME}/share/doc"
-# El tar se borra en el MISMO RUN que la descarga: si se borrara en una
-# instruccion aparte seguiria ocupando espacio en la capa anterior.
+# Si se descarga, el tar se borra en el MISMO RUN: borrarlo en una
+# instruccion aparte lo dejaria ocupando espacio en la capa anterior.
 # share/doc es solo la documentacion HTML y no hace falta en el contenedor.
 
 # hadoop-env.sh tambien necesita JAVA_HOME: los scripts de Hadoop se lanzan

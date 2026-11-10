@@ -15,9 +15,13 @@ Dos decisiones importantes:
    secuencial, sin errores de punto flotante al acumular 5 millones
    de valores.
 
-2) Se emiten dos valores (suma parcial y conteo parcial) en lugar de
-   solo el ingreso. Con ese formato el mismo reducer puede usarse tal
-   cual como combiner, porque sumar parciales da el mismo resultado.
+2) Cada registro se emite con un conteo de 1, ademas del ingreso. Asi
+   los valores son sumables: ingreso y conteo parciales se pueden
+   agregar en cualquier orden. Ojo: el reducer de este examen NO sirve
+   como combiner, porque su salida (4 campos, con el promedio ya
+   calculado) no tiene el formato de la salida del mapper (3 campos).
+   Un combiner tendria que emitir de nuevo
+   tienda <TAB> centavos <TAB> conteo.
 """
 
 import csv

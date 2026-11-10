@@ -20,3 +20,7 @@ venv/
 .vscode/
 .idea/
 .DS_Store
+
+# Tar de Hadoop descargado a mano (no se sube)
+hadoop/vendor/*
+!hadoop/vendor/.gitkeep
